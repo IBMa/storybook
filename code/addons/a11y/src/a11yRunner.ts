@@ -39,8 +39,6 @@ const run = async (storyId: string) => {
       }
 
       let result = null;
-      // input.engine = "accessibility-checker";
-      // input.engine = "axe";
       if (!input.engine || input.engine === 'axe') {
         const axe = (await import('axe-core')).default;
 
