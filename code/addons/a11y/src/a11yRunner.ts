@@ -30,8 +30,6 @@ const run = async (storyId: string) => {
     if (!active) {
       active = true;
       channel.emit(EVENTS.RUNNING);
-      const axe = (await import('axe-core')).default;
-
       const { element = '#storybook-root', config, options = {} } = input;
       const htmlElement = document.querySelector(element as string);
 
@@ -39,17 +37,27 @@ const run = async (storyId: string) => {
         return;
       }
 
-      axe.reset();
-      if (config) {
-        axe.configure(config);
-      }
+      let result = null;
+      if (!input.engine || input.engine === "axe") {
+        const axe = (await import('axe-core')).default;
 
-      const result = await axe.run(htmlElement, options);
+        axe.reset();
+        if (config) {
+          axe.configure(config);
+        }
+
+        result = await axe.run(htmlElement, options);
+      } else if (input.engine === "accessibility-checker") {
+        const { Checker } = (await import('accessibility-checker-engine'));
+        let checker = new Checker();
+        result = await checker.check(htmlElement);
+      }
+        
       // It's possible that we requested a new run on a different story.
       // Unfortunately, axe doesn't support a cancel method to abort current run.
       // We check if the story we run against is still the current one,
       // if not, trigger a new run using the current story
-      if (activeStoryId === storyId) {
+      if (result && activeStoryId === storyId) {
         channel.emit(EVENTS.RESULT, result);
       } else {
         active = false;

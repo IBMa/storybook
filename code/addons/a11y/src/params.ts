@@ -7,6 +7,7 @@ export interface Setup {
 }
 
 export interface A11yParameters {
+  engine?: "axe" | "accessibility-checker",
   element?: ElementContext;
   config?: Spec;
   options?: RunOptions;
