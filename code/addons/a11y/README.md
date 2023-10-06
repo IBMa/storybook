@@ -54,6 +54,9 @@ InputWithoutAutofill.parameters = {
     // Avoid doing this, as it will fully disable all accessibility checks for this story.
     disable: true,
 
+    // Can specify engine as "axe" or "accessibility-checker" (axe default)
+    engine: "axe"
+
     // Instead, override rules 👇
     // axe-core configurationOptions (https://github.com/dequelabs/axe-core/blob/develop/doc/API.md#parameters-1)
     config: {

@@ -2,7 +2,6 @@ import { global } from '@storybook/global';
 import { addons } from '@storybook/preview-api';
 import { EVENTS } from './constants';
 import type { A11yParameters } from './params';
-import { convertReport } from './aCheckerUtil';
 
 const { document, window: globalWindow } = global;
 
@@ -49,10 +48,9 @@ const run = async (storyId: string) => {
 
         result = await axe.run(htmlElement, options);
       } else if (input.engine === 'accessibility-checker') {
-        const { Checker } = await import('accessibility-checker-engine/ace-node');
-        const checker = new Checker();
-        result = await checker.check(htmlElement, ['IBM_Accessibility']);
-        result = convertReport(checker, result);
+        const { CheckerWrapper } = await import('./CheckerWrapper');
+        const checker = new CheckerWrapper(config);
+        result = await checker.run(htmlElement);
       }
       // console.log("Storybook report:", result);
       // It's possible that we requested a new run on a different story.
