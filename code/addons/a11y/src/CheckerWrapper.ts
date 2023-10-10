@@ -3,21 +3,30 @@ import type { Guideline } from 'accessibility-checker-engine/v4/api/IGuideline';
 import type { Report } from 'accessibility-checker-engine/v4/api/IReport';
 import type { Issue } from 'accessibility-checker-engine/v4/api/IRule';
 
+/**
+ * The general format of the issues already used by the storybook addon-a11y
+ */
 interface StorybookIssues {
   id: string;
-  impact: '';
-  tags: [];
+  impact: string;
+  tags: string[];
   description: string;
   help: string;
   helpUrl: string;
   nodes: Array<{
-    any: any[];
+    any: Array<{
+      impact: 'critical' | 'serious' | 'manual';
+      message: string;
+    }>;
     all: any[];
     none: any[];
     target: string[];
   }>;
 }
 
+/**
+ * General format of the configuration already used by the storybook addon-a11y
+ */
 export interface CheckerConfig {
   // Modifications to rules
   rules?: Array<{
@@ -35,13 +44,24 @@ export interface CheckerConfig {
   guidelines?: string[];
 }
 
+/**
+ * A wrapper for the accessibility-checker-engine to adjust configuration
+ * and output to match the existing addon-a11y.
+ */
 export class CheckerWrapper {
+  // Instance of the checker
   private checker: Checker;
 
+  // Guidelines provided by this instance of the checker
   private guidelines: Guideline[];
 
+  // Mapping of rules to toolkit level (used to map to 'impact')
   private ruleTKLevel: { [ruleId: string]: string } = {};
 
+  /**
+   * Instantiate this wrapper using the given config
+   * @param config
+   */
   constructor(private config?: CheckerConfig) {
     this.checker = new Checker();
     this.guidelines = this.checker
@@ -63,6 +83,9 @@ export class CheckerWrapper {
     });
   }
 
+  /**
+   * Enable / disable rules in the guidelines based on the configuration
+   */
   private configureEngine() {
     // Turn off rules here
     this.guidelines.forEach((guideline) => {
@@ -82,9 +105,16 @@ export class CheckerWrapper {
     });
   }
 
+  /**
+   * Run the engine on the specified subtree
+   * @param htmlElement
+   * @returns
+   */
   public async run(htmlElement: Element) {
+    // Configure the engine for this run
     this.configureEngine();
 
+    // Get the regular report from the accessibility-checker-engine
     const report = await this.checker.check(
       htmlElement,
       this.guidelines.map((guideline) => guideline.id)
@@ -105,16 +135,27 @@ export class CheckerWrapper {
         });
       }
     }
+
+    // Determine how many ancestors to remove from the DOM path (needed by the existing plugin)
     let skipCount = 1;
     let skipWalk = htmlElement;
     while (skipWalk.nodeName !== 'html' && skipWalk.parentElement) {
       skipWalk = skipWalk.parentElement;
       skipCount += 1;
     }
-    return this.convertResult(report, skipCount);
+
+    // Convert our report to match the existing report format
+    return this.convertResult(htmlElement, report, skipCount);
   }
 
-  private convertResult(report: Report, skipCount: number) {
+  /**
+   * Convert checker result to storybook report format
+   * @param htmlElement
+   * @param report
+   * @param skipCount
+   * @returns
+   */
+  private convertResult(htmlElement: Element, report: Report, skipCount: number) {
     try {
       const { results } = report;
       return {
@@ -130,11 +171,13 @@ export class CheckerWrapper {
         toolOptions: {},
         inapplicable: [],
         passes: this.convertCollection(
+          htmlElement,
           report,
           results.filter((issue: any) => issue.value[1] === 'PASS'),
           skipCount
         ),
         incomplete: this.convertCollection(
+          htmlElement,
           report,
           results.filter(
             (issue: any) =>
@@ -144,6 +187,7 @@ export class CheckerWrapper {
           skipCount
         ),
         violations: this.convertCollection(
+          htmlElement,
           report,
           results.filter(
             (issue: any) => issue.value[0] === 'VIOLATION' && issue.value[1] === 'FAIL'
@@ -156,6 +200,11 @@ export class CheckerWrapper {
     }
   }
 
+  /**
+   * Convert an accessibility-checker-engine DOM path to a CSS selector
+   * @param xpath
+   * @returns
+   */
   private xpathToCSS(xpath: string) {
     return xpath
       .substring(1)
@@ -164,6 +213,7 @@ export class CheckerWrapper {
   }
 
   private convertCollection(
+    htmlElement: Element,
     report: Report,
     issues: Issue[],
     skipCount: number
@@ -178,25 +228,29 @@ export class CheckerWrapper {
     const retVal: StorybookIssues[] = [];
     Object.keys(issueMap).forEach((key) => {
       const nextIssue = issueMap[key][0];
-      retVal.push({
+      const nextCollection = {
         id: key,
         impact: '',
-        tags: [],
+        tags: [] as string[],
         description: '',
         help: report.nls ? report.nls[key][0] : '',
         helpUrl: this.getHelpUrl(nextIssue),
         nodes: issueMap[key]
-          .map((issue) => this.convertIssue(issue, skipCount))
+          .map((issue) => this.convertIssue(htmlElement, issue, skipCount))
           .filter((issue) => !!issue),
-      });
+      };
+      if (nextCollection.nodes.length > 0) {
+        retVal.push(nextCollection);
+      }
     });
     return retVal;
   }
 
-  private convertIssue(issue: Issue, skipCount: number): any {
+  private convertIssue(htmlElement: Element, issue: Issue, skipCount: number): any {
     const pathParts = issue.path.dom.substring(1).split('/');
     if (skipCount >= pathParts.length) return undefined;
-    const selector = this.xpathToCSS(`/${pathParts.slice(skipCount).join('/')}`);
+    let selector = this.xpathToCSS(`/${pathParts.slice(skipCount).join('/')}`);
+    selector = this.simplifySelector(htmlElement, selector);
     let impact = 'serious';
     if (issue.ruleId in this.ruleTKLevel) {
       const tkLevel = this.ruleTKLevel[issue.ruleId];
@@ -217,17 +271,77 @@ export class CheckerWrapper {
     };
   }
 
+  /**
+   * Simplify the CSS selector
+   *
+   * The selector generated by xpathToCSS is very specific, but not necssarily the
+   * most human friendly
+   * @param htmlElement
+   * @param selector
+   * @returns
+   */
+  private simplifySelector(htmlElement: Element, selector: string) {
+    let selectorSections = selector.split(' > ');
+    // First, swap out individual sections with parts that are more human readable
+    for (let idx = 0; idx < selectorSections.length; idx += 1) {
+      let parents = '';
+      if (idx > 0) {
+        parents = `${selectorSections.slice(0, idx).join(' > ')} > `;
+      }
+      const selectedElement = htmlElement.querySelector(parents + selectorSections[idx]);
+      if (selectedElement) {
+        if (
+          selectedElement?.hasAttribute('id') &&
+          htmlElement.querySelector(`${parents}#${selectedElement.getAttribute('id')}`) ===
+            selectedElement
+        ) {
+          selectorSections[idx] = `#${selectedElement.getAttribute('id')}`;
+        } else if (
+          selectedElement?.hasAttribute('class') &&
+          htmlElement.querySelector(`${parents}.${selectedElement.getAttribute('class')}`) ===
+            selectedElement
+        ) {
+          selectorSections[idx] = `.${selectedElement.getAttribute('class')}`;
+        } else if (
+          htmlElement.querySelector(parents + selectedElement.nodeName) === selectedElement
+        ) {
+          selectorSections[idx] = selectedElement.nodeName.toLowerCase();
+        }
+      }
+    }
+    // Remove parent definitions that don't add clarity
+    while (
+      selectorSections.length > 1 &&
+      htmlElement.querySelector(selectorSections.slice(1).join(' > ')) ===
+        htmlElement.querySelector(selectorSections.join(' > '))
+    ) {
+      selectorSections = selectorSections.slice(1);
+    }
+    if (
+      htmlElement.querySelector(selectorSections.join(' ')) !==
+      htmlElement.querySelector(selectorSections.join(' > '))
+    ) {
+      return selectorSections.join(' > ');
+    }
+    return selectorSections.join(' ');
+  }
+
+  /**
+   * Get a help url for this issue
+   * @param issue
+   * @returns
+   */
   private getHelpUrl(issue: any): string {
     if (issue.help) return issue.help;
-    const helpUrl = this.checker.engine.getHelp(issue.ruleId, issue.reasonId).split('#')[0];
-    const minIssue = {
-      message: issue.message,
-      snippet: issue.snippet,
-      value: issue.value,
-      reasonId: issue.reasonId,
-      ruleId: issue.ruleId,
-      msgArgs: issue.messageArgs,
-    };
-    return `${helpUrl}#${encodeURIComponent(JSON.stringify(minIssue))}`;
+    const helpUrl = this.checker.engine.getHelp(issue.ruleId, issue.reasonId);
+    // const minIssue = {
+    //   message: issue.message,
+    //   snippet: issue.snippet,
+    //   value: issue.value,
+    //   reasonId: issue.reasonId,
+    //   ruleId: issue.ruleId,
+    //   msgArgs: issue.messageArgs,
+    // };
+    return `${helpUrl}`; // #${encodeURIComponent(JSON.stringify(minIssue))}`;
   }
 }
