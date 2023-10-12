@@ -161,7 +161,7 @@ export class CheckerWrapper {
       return {
         testEngine: {
           name: 'accessibility-checker-engine',
-          version: 'x.y.z',
+          version: '3.1.62',
         },
         testRunner: {
           name: 'accessibility-checker',
