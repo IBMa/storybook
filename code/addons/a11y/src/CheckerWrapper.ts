@@ -196,6 +196,7 @@ export class CheckerWrapper {
         ),
       };
     } catch (err) {
+      console.error(err);
       return {};
     }
   }
@@ -292,16 +293,18 @@ export class CheckerWrapper {
       if (selectedElement) {
         if (
           selectedElement?.hasAttribute('id') &&
-          htmlElement.querySelector(`${parents}#${selectedElement.getAttribute('id')}`) ===
-            selectedElement
+          htmlElement.querySelector(
+            `${parents}#${selectedElement.getAttribute('id')?.replace(/:/g, '\\:')}`
+          ) === selectedElement
         ) {
-          selectorSections[idx] = `#${selectedElement.getAttribute('id')}`;
+          selectorSections[idx] = `#${selectedElement.getAttribute('id')!.replace(/:/g, '\\:')}`;
         } else if (
           selectedElement?.hasAttribute('class') &&
-          htmlElement.querySelector(`${parents}.${selectedElement.getAttribute('class')}`) ===
-            selectedElement
+          htmlElement.querySelector(
+            `${parents}.${selectedElement.getAttribute('class')?.replace(/:/g, '\\:')}`
+          ) === selectedElement
         ) {
-          selectorSections[idx] = `.${selectedElement.getAttribute('class')}`;
+          selectorSections[idx] = `.${selectedElement.getAttribute('class')!.replace(/:/g, '\\:')}`;
         } else if (
           htmlElement.querySelector(parents + selectedElement.nodeName) === selectedElement
         ) {
