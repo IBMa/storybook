@@ -5669,7 +5669,7 @@ __metadata:
     "@storybook/theming": "workspace:*"
     "@storybook/types": "workspace:*"
     "@testing-library/react": ^11.2.2
-    accessibility-checker-engine: ^3.1.61
+    accessibility-checker-engine: ^3.1.70
     axe-core: ^4.2.0
     lodash: ^4.17.21
     react-resize-detector: ^7.1.2
@@ -10403,10 +10403,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"accessibility-checker-engine@npm:^3.1.61":
-  version: 3.1.61
-  resolution: "accessibility-checker-engine@npm:3.1.61"
-  checksum: e0708e53c797e8c02bdf16d3f3b521de2edddd298d1d9c81a121bfea047e42ed46c6152cc36b54a483a90350e63136499970ac74390ba3e64f5ce4dbae1f9715
+"accessibility-checker-engine@npm:^3.1.70":
+  version: 3.1.70
+  resolution: "accessibility-checker-engine@npm:3.1.70"
+  checksum: b8c5d48efa9604b4fa4eabff7164135661cd236705af1f46d30e0ccb6315a7e79733068d9bb654273179b34936bbdb5bd2f0b91a0f7f6b348293948e6fd55dfd
   languageName: node
   linkType: hard
 

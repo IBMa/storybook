@@ -292,21 +292,20 @@ export class CheckerWrapper {
       const selectedElement = htmlElement.querySelector(parents + selectorSections[idx]);
       if (selectedElement) {
         if (
-          selectedElement?.hasAttribute('id') &&
-          htmlElement.querySelector(
-            `${parents}#${selectedElement.getAttribute('id')?.replace(/:/g, '\\:')}`
-          ) === selectedElement
+          selectedElement?.hasAttribute('id')
+          && htmlElement.querySelector(`${parents}#${CSS.escape(selectedElement.getAttribute('id')!)}`) === selectedElement 
+          && htmlElement.querySelectorAll(`${parents}#${CSS.escape(selectedElement.getAttribute('id')!)}`).length === 1
         ) {
-          selectorSections[idx] = `#${selectedElement.getAttribute('id')!.replace(/:/g, '\\:')}`;
+          selectorSections[idx] = `#${CSS.escape(selectedElement.getAttribute('id')!)}`;
         } else if (
-          selectedElement?.hasAttribute('class') &&
-          htmlElement.querySelector(
-            `${parents}.${selectedElement.getAttribute('class')?.replace(/:/g, '\\:')}`
-          ) === selectedElement
+          selectedElement?.hasAttribute('class')
+          && htmlElement.querySelector(`${parents}.${CSS.escape(selectedElement.getAttribute('class')!)}`) === selectedElement
+          && htmlElement.querySelectorAll(`${parents}.${CSS.escape(selectedElement.getAttribute('class')!)}`).length === 1
         ) {
-          selectorSections[idx] = `.${selectedElement.getAttribute('class')!.replace(/:/g, '\\:')}`;
+          selectorSections[idx] = `.${CSS.escape(selectedElement.getAttribute('class')!)}`;
         } else if (
           htmlElement.querySelector(parents + selectedElement.nodeName) === selectedElement
+          && htmlElement.querySelectorAll(parents + selectedElement.nodeName).length === 1
         ) {
           selectorSections[idx] = selectedElement.nodeName.toLowerCase();
         }
@@ -314,15 +313,16 @@ export class CheckerWrapper {
     }
     // Remove parent definitions that don't add clarity
     while (
-      selectorSections.length > 1 &&
-      htmlElement.querySelector(selectorSections.slice(1).join(' > ')) ===
-        htmlElement.querySelector(selectorSections.join(' > '))
+      selectorSections.length > 1
+      && htmlElement.querySelector(selectorSections.slice(1).join(' > ')) === htmlElement.querySelector(selectorSections.join(' > '))
+      && htmlElement.querySelectorAll(selectorSections.slice(1).join(' > ')).length === 1
     ) {
       selectorSections = selectorSections.slice(1);
     }
     if (
       htmlElement.querySelector(selectorSections.join(' ')) !==
       htmlElement.querySelector(selectorSections.join(' > '))
+      || htmlElement.querySelectorAll(selectorSections.join(' ')).length > 1
     ) {
       return selectorSections.join(' > ');
     }
