@@ -41,83 +41,114 @@ const runNext = async () => {
 };
 
 export const run = async (input: A11yParameters = DEFAULT_PARAMETERS, storyId: string) => {
-  const axeCore = await import('axe-core');
-  // We do this workaround when Vite projects can't optimize deps in pnpm projects
-  // as axe-core is UMD and therefore won't resolve.
-  // In that case, we just use the global axe (which will be there as a side effect of UMD import).
-  const axe = axeCore?.default || (globalThis as any).axe;
-
   const { config = {}, options = {} } = input;
 
-  // @ts-expect-error - the whole point of this is to error if 'element' is passed
-  if (input.element) {
-    throw new ElementA11yParameterError();
-  }
+  // TODO: Find which engine in the config and replace the "false" with that check
+  const engine =
+    false /** Replace this with checking config for axe / accessibility-checker */ ||
+    'accessibility-checker';
+  if (engine === 'axe') {
+    const axeCore = await import('axe-core');
+    // We do this workaround when Vite projects can't optimize deps in pnpm projects
+    // as axe-core is UMD and therefore won't resolve.
+    // In that case, we just use the global axe (which will be there as a side effect of UMD import).
+    const axe = axeCore?.default || (globalThis as any).axe;
 
-  const context: ContextSpec = {
-    include: document?.body,
-    exclude: ['.sb-wrapper', '#storybook-docs', '#storybook-highlights-root'], // Internal Storybook elements that are always in the document
-  };
-
-  if (input.context) {
-    const hasInclude =
-      typeof input.context === 'object' &&
-      'include' in input.context &&
-      input.context.include !== undefined;
-    const hasExclude =
-      typeof input.context === 'object' &&
-      'exclude' in input.context &&
-      input.context.exclude !== undefined;
-
-    // 1. if context.include exists, use it
-    if (hasInclude) {
-      context.include = (input.context as any).include as ContextProp;
-    } else if (!hasInclude && !hasExclude) {
-      // 2. if context exists, but it's not an object with include or exclude, it's an implicit include to be used directly
-      context.include = input.context as ContextProp;
+    // @ts-expect-error - the whole point of this is to error if 'element' is passed
+    if (input.element) {
+      throw new ElementA11yParameterError();
     }
 
-    // 3. if context.exclude exists, merge it with the default exclude
-    if (hasExclude) {
-      context.exclude = (context.exclude as any).concat((input.context as any).exclude);
-    }
-  }
-
-  axe.reset();
-
-  const configWithDefault = {
-    ...config,
-    rules: [...DISABLED_RULES.map((id) => ({ id, enabled: false })), ...(config?.rules ?? [])],
-  };
-
-  axe.configure(configWithDefault);
-
-  return new Promise<AxeResults>((resolve, reject) => {
-    const highlightsRoot = document?.getElementById('storybook-highlights-root');
-    if (highlightsRoot) {
-      highlightsRoot.style.display = 'none';
-    }
-
-    const task = async () => {
-      try {
-        const result = await axe.run(context, options);
-        const resultWithLinks = withLinkPaths(result, storyId);
-        resolve(resultWithLinks);
-      } catch (error) {
-        reject(error);
-      }
+    const context: ContextSpec = {
+      include: document?.body,
+      exclude: ['.sb-wrapper', '#storybook-docs', '#storybook-highlights-root'], // Internal Storybook elements that are always in the document
     };
 
-    queue.push(task);
+    if (input.context) {
+      const hasInclude =
+        typeof input.context === 'object' &&
+        'include' in input.context &&
+        input.context.include !== undefined;
+      const hasExclude =
+        typeof input.context === 'object' &&
+        'exclude' in input.context &&
+        input.context.exclude !== undefined;
 
-    if (!isRunning) {
-      runNext();
+      // 1. if context.include exists, use it
+      if (hasInclude) {
+        context.include = (input.context as any).include as ContextProp;
+      } else if (!hasInclude && !hasExclude) {
+        // 2. if context exists, but it's not an object with include or exclude, it's an implicit include to be used directly
+        context.include = input.context as ContextProp;
+      }
+
+      // 3. if context.exclude exists, merge it with the default exclude
+      if (hasExclude) {
+        context.exclude = (context.exclude as any).concat((input.context as any).exclude);
+      }
     }
 
-    if (highlightsRoot) {
-      highlightsRoot.style.display = '';
-    }
-  });
+    axe.reset();
+
+    const configWithDefault = {
+      ...config,
+      rules: [...DISABLED_RULES.map((id) => ({ id, enabled: false })), ...(config?.rules ?? [])],
+    };
+
+    axe.configure(configWithDefault);
+
+    return new Promise<AxeResults>((resolve, reject) => {
+      const highlightsRoot = document?.getElementById('storybook-highlights-root');
+      if (highlightsRoot) {
+        highlightsRoot.style.display = 'none';
+      }
+
+      const task = async () => {
+        try {
+          const result = await axe.run(context, options);
+          const resultWithLinks = withLinkPaths(result, storyId);
+          resolve(resultWithLinks);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      queue.push(task);
+
+      if (!isRunning) {
+        runNext();
+      }
+
+      if (highlightsRoot) {
+        highlightsRoot.style.display = '';
+      }
+    });
+  } else if (engine === 'accessibility-checker') {
+    return new Promise<AxeResults>((resolve, reject) => {
+      const task = async () => {
+        const highlightsRoot = document?.getElementById('storybook-highlights-root');
+        if (highlightsRoot) {
+          highlightsRoot.style.display = 'none';
+        }
+
+        try {
+          // TODO: Replace with calling the engine and getting results, using document.body
+          // resolve(OUR_RESULT);
+        } catch (error) {
+          reject(error);
+        }
+        if (highlightsRoot) {
+          highlightsRoot.style.display = '';
+        }
+      };
+
+      queue.push(task);
+
+      if (!isRunning) {
+        runNext();
+      }
+    });
+  }
 };
 
 channel.on(EVENTS.MANUAL, async (storyId: string, input: A11yParameters = DEFAULT_PARAMETERS) => {

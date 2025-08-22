@@ -52,6 +52,7 @@
   },
   "dependencies": {
     "@storybook/global": "^5.0.0",
+    "accessibility-checker-engine": "^4.0.8",
     "axe-core": "^4.2.0"
   },
   "devDependencies": {

@@ -1,6 +1,12 @@
-import type { RunOptions, Selector, SelectorList, Spec } from 'axe-core';
+import type { ElementContext, RunOptions, Selector, SelectorList, Spec } from 'axe-core';
 
 export type SelectorWithoutNode = Omit<Selector, 'Node'> | Omit<SelectorList, 'NodeList'>;
+
+export interface Setup {
+  element?: ElementContext;
+  config: Spec;
+  options: RunOptions;
+}
 
 // copy of ContextObject from axe-core
 export type ContextObjectWithoutNode =
@@ -18,6 +24,10 @@ export type ContextSpecWithoutNode = SelectorWithoutNode | ContextObjectWithoutN
 type A11yTest = 'off' | 'todo' | 'error';
 
 export interface A11yParameters {
+  engine?: 'axe' | 'accessibility-checker';
+  element?: ElementContext;
+  manual?: boolean;
+
   /**
    * Context parameter for axe-core's run function, except without support for passing Nodes and
    * NodeLists directly.
