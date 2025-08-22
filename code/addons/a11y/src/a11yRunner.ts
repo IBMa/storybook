@@ -44,7 +44,7 @@ export const run = async (input: A11yParameters = DEFAULT_PARAMETERS, storyId: s
   const { config = {}, options = {} } = input;
 
   // TODO: Find which engine in the config and replace the "false" with that check
-  const engine =
+  const engine: string =
     false /** Replace this with checking config for axe / accessibility-checker */ ||
     'accessibility-checker';
   if (engine === 'axe') {
@@ -132,6 +132,7 @@ export const run = async (input: A11yParameters = DEFAULT_PARAMETERS, storyId: s
         }
 
         try {
+          console.log('The right engine is running');
           // TODO: Replace with calling the engine and getting results, using document.body
           // resolve(OUR_RESULT);
         } catch (error) {
