@@ -105,9 +105,11 @@ export const run = async (input: A11yParameters = DEFAULT_PARAMETERS, storyId: s
 
       const task = async () => {
         try {
+          console.log('The axe engine is running');
           const result = await axe.run(context, options);
           const resultWithLinks = withLinkPaths(result, storyId);
           resolve(resultWithLinks);
+          console.log('After resolve(resultWithLinks);');
         } catch (error) {
           reject(error);
         }
@@ -132,9 +134,15 @@ export const run = async (input: A11yParameters = DEFAULT_PARAMETERS, storyId: s
         }
 
         try {
-          console.log('The right engine is running');
+          console.log('The accessibility-checker engine is running');
           // TODO: Replace with calling the engine and getting results, using document.body
-          // resolve(OUR_RESULT);
+          const { CheckerWrapper } = await import('./CheckerWrapper');
+          console.log('Line 140');
+          const checker = new CheckerWrapper(config);
+          const result = await checker.run(document.documentElement);
+          console.log('Before resolve(result as any);');
+          resolve(result as any);
+          console.log('After resolve(result as any);');
         } catch (error) {
           reject(error);
         }
