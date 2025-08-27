@@ -1,4 +1,4 @@
-import { Checker } from 'accessibility-checker-engine/ace-node';
+import type { Checker } from 'accessibility-checker-engine/ace';
 import type { Guideline } from 'accessibility-checker-engine/v4/api/IGuideline';
 import type { Report } from 'accessibility-checker-engine/v4/api/IReport';
 import type { Issue } from 'accessibility-checker-engine/v4/api/IRule';
@@ -46,32 +46,41 @@ export interface CheckerConfig {
  */
 export class CheckerWrapper {
   // Instance of the checker
-  private checker: Checker;
+  private checker: Checker | undefined;
 
   // Guidelines provided by this instance of the checker
-  private guidelines: Guideline[];
+  private guidelines: Guideline[] | undefined;
 
   // Mapping of rules to toolkit level (used to map to 'impact')
   private ruleTKLevel: { [ruleId: string]: string } = {};
+
+  public static async getWrapper(config?: CheckerConfig) {
+    const retVal = new CheckerWrapper();
+    await retVal.initialize();
+    return retVal;
+  }
 
   /**
    * Instantiate this wrapper using the given config
    *
    * @param config
    */
-  constructor(private config?: CheckerConfig) {
+  private constructor(private config?: CheckerConfig) {}
+
+  private async initialize() {
+    await import('accessibility-checker-engine/ace-storybook.js');
+    const CheckerPackage = (window as any).ibma_ace_engine;
+    const { Checker } = CheckerPackage;
     this.checker = new Checker();
-    this.guidelines = this.checker
-      .getGuidelines()
-      .filter(
-        (guideline) =>
-          ((!this.config?.guidelines || this.config.guidelines.length === 0) &&
-            guideline.id === 'IBM_Accessibility') ||
-          (this.config?.guidelines &&
-            this.config.guidelines.length > 0 &&
-            this.config?.guidelines?.includes(guideline.id))
-      );
-    this.guidelines.forEach((guideline) => {
+    this.guidelines = this.checker!.getGuidelines().filter(
+      (guideline: Guideline) =>
+        ((!this.config?.guidelines || this.config.guidelines.length === 0) &&
+          guideline.id === 'IBM_Accessibility') ||
+        (this.config?.guidelines &&
+          this.config.guidelines.length > 0 &&
+          this.config?.guidelines?.includes(guideline.id))
+    );
+    this.guidelines!.forEach((guideline) => {
       guideline.checkpoints.forEach((checkpoint) => {
         checkpoint.rules?.forEach((rule) => {
           this.ruleTKLevel[rule.id] = rule.toolkitLevel;
@@ -83,7 +92,7 @@ export class CheckerWrapper {
   /** Enable / disable rules in the guidelines based on the configuration */
   private configureEngine() {
     // Turn off rules here
-    this.guidelines.forEach((guideline) => {
+    this.guidelines!.forEach((guideline) => {
       guideline.checkpoints.forEach((checkpoint) => {
         (checkpoint.rules || []).forEach((ruleIter) => {
           const rule = ruleIter;
@@ -96,7 +105,7 @@ export class CheckerWrapper {
         });
       });
       // Refresh the guideline in the engine
-      this.checker.addGuideline(guideline);
+      this.checker!.addGuideline(guideline);
     });
   }
 
@@ -111,16 +120,16 @@ export class CheckerWrapper {
     this.configureEngine();
 
     // Get the regular report from the accessibility-checker-engine
-    const report = await this.checker.check(
+    const report = await this.checker!.check(
       htmlElement,
-      this.guidelines.map((guideline) => guideline.id)
+      this.guidelines!.map((guideline) => guideline.id)
     );
 
     // Post process to remove issues related to filtered rules
     if (this.config?.rules) {
       const selRules = this.config.rules.filter((rule) => rule.selector);
       if (selRules.length > 0) {
-        report.results = report.results.filter((issue) => {
+        report.results = report.results.filter((issue: Issue) => {
           const ruleConfig = selRules.find((rule) => rule.id === issue.ruleId);
           return (
             !ruleConfig ||
