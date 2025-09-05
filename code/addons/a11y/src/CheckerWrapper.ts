@@ -68,8 +68,8 @@ export class CheckerWrapper {
   private constructor(private config?: CheckerConfig) {}
 
   private async initialize() {
-    await import('accessibility-checker-engine/ace-storybook.js');
-    const CheckerPackage = (window as any).ibma_ace_engine;
+    await import('accessibility-checker-engine/ace-window.js');
+    const CheckerPackage = (window as any).ace_ibma;
     const { Checker } = CheckerPackage;
     this.checker = new Checker();
     this.guidelines = this.checker!.getGuidelines().filter(
