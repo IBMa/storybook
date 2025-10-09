@@ -19,6 +19,12 @@ const DISABLED_RULES = [
   // In component testing, landmarks are not always present
   // and the rule check can cause false positives
   'region',
+  'html_lang_exists',
+  'page_title_exists',
+  'skip_main_exists',
+  'html_skipnav_exists',
+  'aria_content_in_landmark',
+  'aria_child_tabbable',
 ] as const;
 
 // A simple queue to run axe-core in sequence
@@ -134,9 +140,17 @@ export const run = async (input: A11yParameters = DEFAULT_PARAMETERS, storyId: s
         try {
           const CheckerWrapperP = await import('./CheckerWrapper');
           const { CheckerWrapper } = CheckerWrapperP;
-          const checker = await CheckerWrapper.getWrapper(config);
+          const configWithDefault = {
+            ...config,
+            rules: [
+              ...DISABLED_RULES.map((id) => ({ id, enabled: false })),
+              ...(config?.rules ?? []),
+            ],
+          };
+          const checker = await CheckerWrapper.getWrapper(configWithDefault);
           const result = await checker.run(document.documentElement);
-          resolve(result as any);
+          const resultWithLinks = withLinkPaths(result as any, storyId);
+          resolve(resultWithLinks);
         } catch (error) {
           console.error(error);
           reject(error);

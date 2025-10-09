@@ -54,8 +54,8 @@ export class CheckerWrapper {
   // Mapping of rules to toolkit level (used to map to 'impact')
   private ruleTKLevel: { [ruleId: string]: string } = {};
 
-  public static async getWrapper(config?: CheckerConfig) {
-    const retVal = new CheckerWrapper();
+  public static async getWrapper(configWithDefault?: CheckerConfig) {
+    const retVal = new CheckerWrapper(configWithDefault);
     await retVal.initialize();
     return retVal;
   }
@@ -288,6 +288,7 @@ export class CheckerWrapper {
       all: [],
       none: [],
       target: [selector],
+      html: issue.snippet,
     };
   }
 
