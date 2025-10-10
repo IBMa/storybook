@@ -142,7 +142,7 @@ export const Details = ({ id, item, type, selection, handleSelectionChange }: De
     <Info>
       <RuleId>{item.id}</RuleId>
       <Description>
-        {getFriendlySummaryForAxeResult(item)}{' '}
+        {item.help}{' '}
         <Link href={item.helpUrl} target="_blank" rel="noopener noreferrer" withArrow>
           Learn how to resolve this violation
         </Link>
