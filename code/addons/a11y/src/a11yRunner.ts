@@ -149,7 +149,7 @@ export const run = async (input: A11yParameters = DEFAULT_PARAMETERS, storyId: s
           };
           const checker = await CheckerWrapper.getWrapper(configWithDefault);
           const result = await checker.run(document.documentElement);
-          const resultWithLinks = withLinkPaths(result as any, storyId);
+          const resultWithLinks = withLinkPaths(result, storyId);
           resolve(resultWithLinks);
         } catch (error) {
           console.error(error);

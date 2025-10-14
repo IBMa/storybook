@@ -2,25 +2,7 @@ import type { Checker } from 'accessibility-checker-engine/ace';
 import type { Guideline } from 'accessibility-checker-engine/v4/api/IGuideline';
 import type { Report } from 'accessibility-checker-engine/v4/api/IReport';
 import type { Issue } from 'accessibility-checker-engine/v4/api/IRule';
-
-/** The general format of the issues already used by the storybook addon-a11y */
-interface StorybookIssues {
-  id: string;
-  impact: string;
-  tags: string[];
-  description: string;
-  help: string;
-  helpUrl: string;
-  nodes: Array<{
-    any: Array<{
-      impact: 'critical' | 'serious' | 'manual';
-      message: string;
-    }>;
-    all: any[];
-    none: any[];
-    target: string[];
-  }>;
-}
+import type { AxeResults, Result } from 'axe-core';
 
 /** General format of the configuration already used by the storybook addon-a11y */
 export interface CheckerConfig {
@@ -115,7 +97,7 @@ export class CheckerWrapper {
    * @param htmlElement
    * @returns
    */
-  public async run(htmlElement: Element) {
+  public async run(htmlElement: Element): Promise<AxeResults> {
     // Configure the engine for this run
     this.configureEngine();
 
@@ -161,7 +143,7 @@ export class CheckerWrapper {
    * @param skipCount
    * @returns
    */
-  private convertResult(htmlElement: Element, report: Report, skipCount: number) {
+  private convertResult(htmlElement: Element, report: Report, skipCount: number): AxeResults {
     try {
       const { results } = report;
       return {
@@ -171,6 +153,12 @@ export class CheckerWrapper {
         },
         testRunner: {
           name: 'accessibility-checker',
+        },
+        testEnvironment: {
+          // @ts-expect-error navigator
+          userAgent: '',
+          windowHeight: htmlElement?.ownerDocument?.defaultView?.innerHeight || 0,
+          windowWidth: htmlElement?.ownerDocument?.defaultView?.innerWidth || 0,
         },
         timestamp: new Date().toISOString(),
         url: document.location.href,
@@ -203,7 +191,7 @@ export class CheckerWrapper {
       };
     } catch (err) {
       console.error(err);
-      return {};
+      return {} as AxeResults;
     }
   }
 
@@ -225,7 +213,7 @@ export class CheckerWrapper {
     report: Report,
     issues: Issue[],
     skipCount: number
-  ): Array<StorybookIssues> {
+  ): Array<Result> {
     const issueMap: {
       [ruleId: string]: Issue[];
     } = {};
@@ -233,12 +221,12 @@ export class CheckerWrapper {
       issueMap[issue.ruleId] = issueMap[issue.ruleId] || [];
       issueMap[issue.ruleId].push(issue);
     });
-    const retVal: StorybookIssues[] = [];
+    const retVal: Result[] = [];
     Object.keys(issueMap).forEach((key) => {
       const nextIssue = issueMap[key][0];
-      const nextCollection = {
+      const nextCollection: Result = {
         id: key,
-        impact: '',
+        impact: null,
         tags: [] as string[],
         description: '',
         help: report.nls ? report.nls[key][0] : '',
@@ -369,7 +357,7 @@ export class CheckerWrapper {
     if (issue.help) {
       return issue.help;
     }
-    const helpUrl = this.checker.engine.getHelp(issue.ruleId, issue.reasonId);
+    const helpUrl = this.checker!.engine.getHelp(issue.ruleId, issue.reasonId);
     // const minIssue = {
     //   message: issue.message,
     //   snippet: issue.snippet,
