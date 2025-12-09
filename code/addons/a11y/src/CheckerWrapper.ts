@@ -300,26 +300,24 @@ export class CheckerWrapper {
       }
       const selectedElement = htmlElement.querySelector(parents + selectorSections[idx]);
       if (selectedElement) {
-        if (
-          selectedElement?.hasAttribute('id') &&
-          htmlElement.querySelector(
-            `${parents}#${CSS.escape(selectedElement.getAttribute('id')!)}`
-          ) === selectedElement &&
-          htmlElement.querySelectorAll(
-            `${parents}#${CSS.escape(selectedElement.getAttribute('id')!)}`
-          ).length === 1
-        ) {
-          selectorSections[idx] = `#${CSS.escape(selectedElement.getAttribute('id')!)}`;
-        } else if (
-          selectedElement?.hasAttribute('class') &&
-          htmlElement.querySelector(
-            `${parents}.${CSS.escape(selectedElement.getAttribute('class')!)}`
-          ) === selectedElement &&
-          htmlElement.querySelectorAll(
-            `${parents}.${CSS.escape(selectedElement.getAttribute('class')!)}`
-          ).length === 1
-        ) {
-          selectorSections[idx] = `.${CSS.escape(selectedElement.getAttribute('class')!)}`;
+        if (selectedElement?.hasAttribute('id')) {
+          const id = selectedElement.getAttribute('id')?.trim();
+          if (
+            id &&
+            htmlElement.querySelector(`${parents}#${CSS.escape(id)}`) === selectedElement &&
+            htmlElement.querySelectorAll(`${parents}#${CSS.escape(id)}`).length === 1
+          ) {
+            selectorSections[idx] = `#${CSS.escape(id)}`;
+          }
+        } else if (selectedElement?.hasAttribute('class')) {
+          const className = selectedElement.getAttribute('class')?.trim();
+          if (
+            className &&
+            htmlElement.querySelector(`${parents}.${CSS.escape(className)}`) === selectedElement &&
+            htmlElement.querySelectorAll(`${parents}.${CSS.escape(className)}`).length === 1
+          ) {
+            selectorSections[idx] = `.${CSS.escape(className)}`;
+          }
         } else if (
           htmlElement.querySelector(parents + selectedElement.nodeName) === selectedElement &&
           htmlElement.querySelectorAll(parents + selectedElement.nodeName).length === 1
